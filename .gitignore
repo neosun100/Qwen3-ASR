@@ -21,4 +21,12 @@ wheels/
 .idea/
 .vscode/
 venv/
-env/
+env/__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+dist/
+build/
+.env
+app/__pycache__/
+tests/__pycache__/

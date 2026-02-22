@@ -1,0 +1,17 @@
+# Docker build artifacts
+.git
+.github
+.pytest_cache
+__pycache__
+*.pyc
+*.egg-info
+build/
+dist/
+*.md
+!README.md
+assets/
+docs/
+finetuning/
+tests/
+ralph-progress.md
+PROMPT.md

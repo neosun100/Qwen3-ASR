@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Qwen3-ASR</title>
+<style>
+:root{--bg:linear-gradient(135deg,#0a0a1a,#0d1b2a,#1a0a2e);--surface:rgba(255,255,255,0.04);--surface2:rgba(255,255,255,0.08);--border:rgba(255,255,255,0.08);--text:#e8e8f0;--dim:#8888a0;--accent:#06b6d4;--accent2:#8b5cf6;--green:#22c55e;--blue:#3b82f6;--orange:#f59e0b;--red:#ef4444;--pink:#ec4899}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+.header{text-align:center;padding:2rem 1rem 1rem;position:relative}
+.title{font-size:2.2rem;font-weight:700;background:linear-gradient(135deg,var(--accent),var(--accent2),var(--pink));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-size:200% 200%;animation:grad 4s ease infinite}
+@keyframes grad{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
+.subtitle{color:var(--dim);margin-top:.4rem;font-size:.9rem}
+.container{max-width:920px;margin:0 auto;padding:0 1rem 2rem}
+.metrics-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:.75rem;margin-bottom:1.5rem}
+@media(max-width:700px){.metrics-grid{grid-template-columns:repeat(2,1fr)}}
+.metric-card{background:var(--surface);backdrop-filter:blur(12px);border:1px solid var(--border);border-radius:12px;padding:1rem;text-align:center;transition:all .3s}
+.metric-card.ok{border-color:rgba(34,197,94,.3);box-shadow:0 0 20px rgba(34,197,94,.05)}
+.metric-label{font-size:.7rem;color:var(--dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:.4rem}
+.metric-value{font-size:1.4rem;font-weight:700;color:var(--accent)}
+.metric-unit{font-size:.7rem;color:var(--dim)}
+.card{background:var(--surface);backdrop-filter:blur(12px);border:1px solid var(--border);border-radius:12px;padding:1.25rem;margin-bottom:1.25rem}
+.card-title{font-size:.95rem;font-weight:600;margin-bottom:.75rem;display:flex;align-items:center;gap:.5rem}
+.form-group{margin-bottom:.75rem}
+.form-label{display:block;font-size:.8rem;color:var(--dim);margin-bottom:.35rem;font-weight:500}
+input,select,textarea{width:100%;padding:.6rem .75rem;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:.85rem;transition:border-color .2s}
+input:focus,select:focus{outline:none;border-color:var(--accent)}
+select option{background:#1a1a2e;color:var(--text)}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:.75rem}
+@media(max-width:600px){.form-row{grid-template-columns:1fr}}
+.btn{width:100%;padding:.85rem;background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;border-radius:10px;color:#fff;font-size:1rem;font-weight:600;cursor:pointer;transition:all .3s;display:flex;align-items:center;justify-content:center;gap:.5rem}
+.btn:hover{transform:translateY(-1px);box-shadow:0 8px 30px rgba(6,182,212,.25)}
+.btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.btn-sm{padding:.4rem .8rem;font-size:.8rem;width:auto;border-radius:6px}
+.upload-zone{border:2px dashed var(--border);border-radius:12px;padding:2.5rem;text-align:center;cursor:pointer;transition:all .3s;background:rgba(255,255,255,0.01)}
+.upload-zone:hover,.upload-zone.dragover{border-color:var(--accent);background:rgba(6,182,212,.05)}
+.upload-icon{font-size:2.5rem;margin-bottom:.5rem}
+.result-text{background:rgba(255,255,255,0.03);border-radius:8px;padding:1rem;font-family:'SF Mono',monospace;white-space:pre-wrap;max-height:400px;overflow-y:auto;border:1px solid var(--border);line-height:1.7;font-size:.85rem}
+.ts-item{display:inline-block;padding:2px 6px;margin:2px;border-radius:4px;background:rgba(6,182,212,.1);border:1px solid rgba(6,182,212,.2);font-size:.8rem;cursor:pointer;transition:all .2s}
+.ts-item:hover{background:rgba(6,182,212,.2);border-color:var(--accent)}
+.ts-time{color:var(--accent);font-size:.65rem;font-family:monospace}
+.status-bar{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem;padding:.6rem 1rem;background:var(--surface);border:1px solid var(--border);border-radius:8px;margin-bottom:1.25rem;font-size:.8rem}
+.status-item{display:flex;align-items:center;gap:.4rem}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--green)}
+.dot.off{background:var(--dim)}
+.dot.busy{background:var(--orange);animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.hidden{display:none}
+.progress-bar{width:100%;height:3px;background:rgba(255,255,255,0.06);border-radius:2px;overflow:hidden;margin-top:.75rem}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));width:0%;transition:width .3s}
+.lang-select{position:absolute;top:1rem;right:1rem;padding:.4rem .6rem;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:.8rem}
+.switch{position:relative;display:inline-block;width:40px;height:20px;vertical-align:middle}
+.switch input{opacity:0;width:0;height:0}
+.sw-sl{position:absolute;cursor:pointer;inset:0;background:rgba(255,255,255,0.1);transition:.3s;border-radius:20px}
+.sw-sl:before{position:absolute;content:"";height:14px;width:14px;left:3px;bottom:3px;background:#fff;transition:.3s;border-radius:50%}
+input:checked+.sw-sl{background:linear-gradient(135deg,var(--accent),var(--accent2))}
+input:checked+.sw-sl:before{transform:translateX(20px)}
+audio{width:100%;margin-top:.75rem;border-radius:8px}
+.mic-btn{width:60px;height:60px;border-radius:50%;border:2px solid var(--accent);background:rgba(6,182,212,.1);color:var(--accent);font-size:1.5rem;cursor:pointer;transition:all .3s;display:flex;align-items:center;justify-content:center;margin:0 auto}
+.mic-btn.recording{border-color:var(--red);background:rgba(239,68,68,.15);color:var(--red);animation:pulse 1s infinite}
+</style>
+</head>
+<body>
+<div class="header">
+<select class="lang-select" id="uiLang" onchange="setLang(this.value)">
+<option value="zh-CN">🇨🇳 简体中文</option><option value="zh-TW">🇹🇼 繁體中文</option>
+<option value="en">🇺🇸 English</option><option value="ja">🇯🇵 日本語</option>
+</select>
+<h1 class="title">🎙️ Qwen3-ASR</h1>
+<p class="subtitle" data-i18n="subtitle">52语言 · 全能语音识别 · GPU加速</p>
+</div>
+<div class="container">
+<!-- Metrics -->
+<div class="metrics-grid">
+<div class="metric-card" id="mc-time"><div class="metric-label" data-i18n="m.time">处理耗时</div><div class="metric-value" id="v-time">--</div><div class="metric-unit">s</div></div>
+<div class="metric-card" id="mc-dur"><div class="metric-label" data-i18n="m.dur">音频时长</div><div class="metric-value" id="v-dur">--</div><div class="metric-unit">s</div></div>
+<div class="metric-card" id="mc-rtf"><div class="metric-label">RTF</div><div class="metric-value" id="v-rtf">--</div><div class="metric-unit" data-i18n="m.rtf">实时率</div></div>
+<div class="metric-card" id="mc-gpu"><div class="metric-label">GPU</div><div class="metric-value" id="v-gpu">--</div><div class="metric-unit">MB</div></div>
+</div>
+<!-- Status bar -->
+<div class="status-bar">
+<div class="status-item"><span class="dot off" id="sDot"></span><span id="sText" data-i18n="s.ready">就绪</span></div>
+<div class="status-item"><span style="color:var(--dim)" data-i18n="s.model">模型:</span><span id="sModel">--</span></div>
+<div class="status-item"><span style="color:var(--dim)">GPU:</span><span id="sGpu">--</span></div>
+<button class="btn-sm" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);cursor:pointer" onclick="doOffload()" data-i18n="s.release">释放</button>
+<a href="/docs" target="_blank" style="padding:.3rem .6rem;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--dim);text-decoration:none;font-size:.75rem">📄 API</a>
+</div>
+<!-- Upload + Mic -->
+<div class="card">
+<div class="card-title">🎵 <span data-i18n="u.title">音频输入</span></div>
+<div style="display:flex;gap:1rem;align-items:center;margin-bottom:1rem">
+<div style="flex:1">
+<div class="upload-zone" id="upZone" onclick="document.getElementById('fileIn').click()">
+<div class="upload-icon">📁</div>
+<div data-i18n="u.hint">拖拽音频文件或点击上传</div>
+<div style="margin-top:.3rem;font-size:.75rem;color:var(--dim)" data-i18n="u.fmt">MP3 / WAV / FLAC / M4A / OGG</div>
+</div>
+<input type="file" id="fileIn" accept="audio/*" class="hidden" onchange="handleFile(this.files[0])">
+</div>
+<div style="text-align:center">
+<button class="mic-btn" id="micBtn" onclick="toggleMic()">🎤</button>
+<div style="font-size:.7rem;color:var(--dim);margin-top:.3rem" data-i18n="u.mic">录音</div>
+</div>
+</div>
+<div id="fileName" class="hidden" style="text-align:center;color:var(--accent);font-size:.85rem"></div>
+<audio id="audioPlayer" controls class="hidden"></audio>
+</div>
+<!-- Settings -->
+<div class="card">
+<div class="card-title">⚙️ <span data-i18n="p.title">识别设置</span></div>
+<div class="form-row">
+<div class="form-group">
+<label class="form-label" data-i18n="p.model">模型</label>
+<select id="selModel">
+<option value="Qwen3-ASR-1.7B">Qwen3-ASR-1.7B (高精度)</option>
+<option value="Qwen3-ASR-0.6B">Qwen3-ASR-0.6B (轻量快速)</option>
+</select>
+</div>
+<div class="form-group">
+<label class="form-label" data-i18n="p.lang">语言</label>
+<select id="selLang">
+<option value="auto" data-i18n="p.auto">🌐 自动检测</option>
+<optgroup label="常用 / Common">
+<option value="Chinese">中文 Chinese</option><option value="English">English</option>
+<option value="Japanese">日本語 Japanese</option><option value="Korean">한국어 Korean</option>
+<option value="Cantonese">粤语 Cantonese</option><option value="French">Français</option>
+<option value="German">Deutsch</option><option value="Spanish">Español</option>
+</optgroup>
+<optgroup label="中文方言 / Dialects">
+<option value="Sichuan">四川话</option><option value="Cantonese (Guangdong)">广东粤语</option>
+<option value="Cantonese (Hong Kong)">香港粤语</option><option value="Wu">吴语</option>
+<option value="Minnan">闽南语</option><option value="Dongbei">东北话</option>
+<option value="Henan">河南话</option><option value="Hunan">湖南话</option>
+</optgroup>
+<optgroup label="其他 / Others">
+<option value="Arabic">العربية Arabic</option><option value="Portuguese">Português</option>
+<option value="Indonesian">Bahasa Indonesia</option><option value="Italian">Italiano</option>
+<option value="Russian">Русский</option><option value="Thai">ไทย Thai</option>
+<option value="Vietnamese">Tiếng Việt</option><option value="Turkish">Türkçe</option>
+<option value="Hindi">हिन्दी Hindi</option><option value="Malay">Bahasa Melayu</option>
+<option value="Dutch">Nederlands</option><option value="Swedish">Svenska</option>
+<option value="Danish">Dansk</option><option value="Finnish">Suomi</option>
+<option value="Polish">Polski</option><option value="Czech">Čeština</option>
+<option value="Filipino">Filipino</option><option value="Persian">فارسی</option>
+<option value="Greek">Ελληνικά</option><option value="Romanian">Română</option>
+<option value="Hungarian">Magyar</option><option value="Macedonian">Македонски</option>
+</optgroup>
+</select>
+</div>
+</div>
+<div class="form-row">
+<div class="form-group">
+<label class="form-label" style="display:flex;align-items:center;gap:.75rem">
+<span data-i18n="p.ts">⏱️ 时间戳</span>
+<label class="switch"><input type="checkbox" id="chkTs"><span class="sw-sl"></span></label>
+</label>
+</div>
+<div class="form-group">
+<label class="form-label" style="display:flex;align-items:center;gap:.75rem">
+<span data-i18n="p.dtype">精度</span>
+<select id="selDtype" style="width:auto;flex:1"><option value="bfloat16">bfloat16</option><option value="float16">float16</option></select>
+</label>
+</div>
+</div>
+</div>
+<!-- Transcribe button -->
+<button class="btn" id="goBtn" onclick="doTranscribe()" disabled>
+<span>▶</span> <span data-i18n="btn.go">开始识别</span>
+</button>
+<div class="progress-bar hidden" id="progBar"><div class="progress-fill" id="progFill"></div></div>
+<!-- Result -->
+<div class="hidden" id="resultArea">
+<div class="card">
+<div class="card-title">📝 <span data-i18n="r.title">识别结果</span></div>
+<div id="resultText" class="result-text"></div>
+<div id="tsArea" class="hidden" style="margin-top:.75rem">
+<div class="card-title" style="font-size:.85rem">⏱️ <span data-i18n="r.ts">时间戳</span></div>
+<div id="tsContent" style="line-height:2"></div>
+</div>
+<div style="margin-top:.75rem;display:flex;gap:.5rem;flex-wrap:wrap">
+<button class="btn btn-sm" style="flex:1;background:var(--surface2);border:1px solid var(--border);color:var(--text)" onclick="copyText()">📋 <span data-i18n="btn.copy">复制</span></button>
+<button class="btn btn-sm" style="flex:1;background:var(--surface2);border:1px solid var(--border);color:var(--text)" onclick="dlJson()">📄 JSON</button>
+</div>
+</div>
+</div>
+</div>
+<script>
+const I={
+'zh-CN':{subtitle:'52语言 · 全能语音识别 · GPU加速','m.time':'处理耗时','m.dur':'音频时长','m.rtf':'实时率',
+'s.ready':'就绪','s.model':'模型:','s.release':'释放','s.busy':'识别中...','s.done':'完成',
+'u.title':'音频输入','u.hint':'拖拽音频文件或点击上传','u.fmt':'MP3 / WAV / FLAC / M4A / OGG','u.mic':'录音',
+'p.title':'识别设置','p.model':'模型','p.lang':'语言','p.auto':'🌐 自动检测','p.ts':'⏱️ 时间戳','p.dtype':'精度',
+'btn.go':'开始识别','btn.copy':'复制','r.title':'识别结果','r.ts':'时间戳'},
+'zh-TW':{subtitle:'52語言 · 全能語音識別 · GPU加速','m.time':'處理耗時','m.dur':'音頻時長','m.rtf':'實時率',
+'s.ready':'就緒','s.model':'模型:','s.release':'釋放','s.busy':'識別中...','s.done':'完成',
+'u.title':'音頻輸入','u.hint':'拖拽音頻文件或點擊上傳','u.fmt':'MP3 / WAV / FLAC / M4A / OGG','u.mic':'錄音',
+'p.title':'識別設置','p.model':'模型','p.lang':'語言','p.auto':'🌐 自動檢測','p.ts':'⏱️ 時間戳','p.dtype':'精度',
+'btn.go':'開始識別','btn.copy':'複製','r.title':'識別結果','r.ts':'時間戳'},
+'en':{subtitle:'52 Languages · All-in-One ASR · GPU Accelerated','m.time':'Process Time','m.dur':'Duration','m.rtf':'Real-time Factor',
+'s.ready':'Ready','s.model':'Model:','s.release':'Release','s.busy':'Processing...','s.done':'Done',
+'u.title':'Audio Input','u.hint':'Drop audio file or click to upload','u.fmt':'MP3 / WAV / FLAC / M4A / OGG','u.mic':'Record',
+'p.title':'Settings','p.model':'Model','p.lang':'Language','p.auto':'🌐 Auto Detect','p.ts':'⏱️ Timestamps','p.dtype':'Precision',
+'btn.go':'Transcribe','btn.copy':'Copy','r.title':'Result','r.ts':'Timestamps'},
+'ja':{subtitle:'52言語 · オールインワンASR · GPU加速','m.time':'処理時間','m.dur':'音声時間','m.rtf':'リアルタイム率',
+'s.ready':'準備完了','s.model':'モデル:','s.release':'解放','s.busy':'処理中...','s.done':'完了',
+'u.title':'音声入力','u.hint':'音声ファイルをドロップまたはクリック','u.fmt':'MP3 / WAV / FLAC / M4A / OGG','u.mic':'録音',
+'p.title':'設定','p.model':'モデル','p.lang':'言語','p.auto':'🌐 自動検出','p.ts':'⏱️ タイムスタンプ','p.dtype':'精度',
+'btn.go':'文字起こし','btn.copy':'コピー','r.title':'結果','r.ts':'タイムスタンプ'}
+};
+let lang=localStorage.getItem('qwen-asr-lang')||'zh-CN', selFile=null, curResult=null, mediaRec=null, recording=false;
+
+function setLang(l){lang=l;localStorage.setItem('qwen-asr-lang',l);document.getElementById('uiLang').value=l;
+document.querySelectorAll('[data-i18n]').forEach(e=>{const k=e.getAttribute('data-i18n');if(I[l]&&I[l][k])e.textContent=I[l][k];})}
+
+// Upload
+const uz=document.getElementById('upZone');
+uz.ondragover=e=>{e.preventDefault();uz.classList.add('dragover')};
+uz.ondragleave=()=>uz.classList.remove('dragover');
+uz.ondrop=e=>{e.preventDefault();uz.classList.remove('dragover');if(e.dataTransfer.files[0])handleFile(e.dataTransfer.files[0])};
+
+function handleFile(f){selFile=f;
+document.getElementById('fileName').textContent='📄 '+f.name+' ('+(f.size/1048576).toFixed(2)+' MB)';
+document.getElementById('fileName').classList.remove('hidden');
+document.getElementById('goBtn').disabled=false;
+const a=document.getElementById('audioPlayer');a.src=URL.createObjectURL(f);a.classList.remove('hidden');
+a.onloadedmetadata=()=>{document.getElementById('v-dur').textContent=a.duration.toFixed(1)}}
+
+// Mic
+function toggleMic(){
+if(recording){mediaRec.stop();return}
+navigator.mediaDevices.getUserMedia({audio:true}).then(s=>{
+const chunks=[];mediaRec=new MediaRecorder(s);
+mediaRec.ondataavailable=e=>chunks.push(e.data);
+mediaRec.onstop=()=>{s.getTracks().forEach(t=>t.stop());
+const blob=new Blob(chunks,{type:'audio/webm'});
+handleFile(new File([blob],'recording.webm',{type:'audio/webm'}));
+document.getElementById('micBtn').classList.remove('recording');recording=false};
+mediaRec.start();recording=true;document.getElementById('micBtn').classList.add('recording')
+}).catch(()=>alert('Microphone access denied'))}
+
+// Transcribe
+async function doTranscribe(){
+if(!selFile)return;
+const btn=document.getElementById('goBtn'),prog=document.getElementById('progBar'),dot=document.getElementById('sDot'),st=document.getElementById('sText');
+btn.disabled=true;prog.classList.remove('hidden');document.getElementById('progFill').style.width='15%';
+dot.className='dot busy';st.textContent=I[lang]['s.busy']||'Processing...';
+const t0=performance.now(),fd=new FormData();
+fd.append('file',selFile);fd.append('model',document.getElementById('selModel').value);
+fd.append('language',document.getElementById('selLang').value);
+fd.append('return_timestamps',document.getElementById('chkTs').checked);
+fd.append('dtype',document.getElementById('selDtype').value);
+try{
+document.getElementById('progFill').style.width='40%';
+const res=await fetch('/api/transcribe',{method:'POST',body:fd});
+document.getElementById('progFill').style.width='90%';
+const data=await res.json();
+if(data.error)throw new Error(data.error);
+curResult=data;
+document.getElementById('resultArea').classList.remove('hidden');
+document.getElementById('resultText').textContent=data.text;
+// timestamps
+if(data.timestamps&&data.timestamps.length){
+document.getElementById('tsArea').classList.remove('hidden');
+document.getElementById('tsContent').innerHTML=data.timestamps.map(t=>
+`<span class="ts-item" onclick="seekTo(${t.start})" title="${t.start.toFixed(2)}s - ${t.end.toFixed(2)}s"><span class="ts-time">${t.start.toFixed(2)}</span> ${t.text}</span>`
+).join('')}else{document.getElementById('tsArea').classList.add('hidden')}
+// metrics
+const elapsed=(performance.now()-t0)/1000;
+document.getElementById('v-time').textContent=data.process_time_seconds?.toFixed(2)||elapsed.toFixed(2);
+document.getElementById('v-dur').textContent=data.duration_seconds?.toFixed(1)||'--';
+document.getElementById('v-rtf').textContent=data.rtf?.toFixed(3)||'--';
+document.querySelectorAll('.metric-card').forEach(c=>c.classList.add('ok'));
+document.getElementById('progFill').style.width='100%';
+dot.className='dot';st.textContent=I[lang]['s.done']||'Done';
+}catch(e){st.textContent='Error: '+e.message;dot.className='dot off'}
+finally{btn.disabled=false;setTimeout(()=>prog.classList.add('hidden'),800)}}
+
+function seekTo(t){const a=document.getElementById('audioPlayer');if(a.src){a.currentTime=t;a.play()}}
+function copyText(){if(curResult)navigator.clipboard.writeText(curResult.text).then(()=>{})}
+function dlJson(){if(!curResult)return;const b=new Blob([JSON.stringify(curResult,null,2)],{type:'application/json'});
+const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='transcription.json';a.click()}
+
+async function doOffload(){await fetch('/api/gpu-offload',{method:'POST'});updateStatus()}
+
+async function updateStatus(){try{
+const r=await fetch('/health'),d=await r.json();
+document.getElementById('sModel').textContent=d.model_loaded||'--';
+document.getElementById('sDot').className=d.model_loaded?'dot':'dot off';
+if(d.gpu){const g=d.gpu;document.getElementById('sGpu').textContent=`${g.memory_used_mb}/${g.memory_total_mb}MB`;
+document.getElementById('v-gpu').textContent=g.memory_used_mb}
+}catch(e){document.getElementById('sGpu').textContent='--'}}
+
+setLang(lang);updateStatus();setInterval(updateStatus,5000);
+</script>
+</body>
+</html>

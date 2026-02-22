@@ -1,0 +1,32 @@
+services:
+  qwen3-asr:
+    build: .
+    container_name: qwen3-asr
+    ports:
+      - "0.0.0.0:8250:8200"
+      - "0.0.0.0:8251:8201"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["${GPU_ID:-2}"]
+              capabilities: [gpu]
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=${GPU_ID:-2}
+      - MODEL_PATH_QWEN3_ASR_1_7B=/models/Qwen3-ASR-1.7B
+      - MODEL_PATH_QWEN3_ASR_0_6B=/models/Qwen3-ASR-0.6B
+      - ALIGNER_PATH=/models/Qwen3-ForcedAligner-0.6B
+      - PORT=8200
+      - MCP_PORT=8201
+      - GPU_IDLE_TIMEOUT=600
+    volumes:
+      - /tmp/qwen3-asr-cache:/root/.cache
+    shm_size: "4gb"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8200/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
