@@ -30,3 +30,14 @@ build/
 .env
 app/__pycache__/
 tests/__pycache__/
+*.pyc
+__pycache__/
+.env
+.env.*
+/tmp/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+ralph-progress.md
+PROMPT.md
